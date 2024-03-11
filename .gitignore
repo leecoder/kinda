@@ -19,3 +19,8 @@
 
 # Go workspace file
 go.work
+
+micromamba/
+comfyui/
+genctags/micromamba
+genctags/pycparser
