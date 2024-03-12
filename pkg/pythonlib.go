@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"log"
-	"os"
 	"strconv"
 	"unsafe"
 )
@@ -24,9 +23,9 @@ void closePythonLib(void* handle) {
     dlclose(handle);
 }
 
-void loadPythonFunctions(char** functionNames, void** functionPointers, int count) {
+void loadPythonFunctions(char * libpath, char** functionNames, void** functionPointers, int count) {
     char *error;
-    void* handle = dlopen("/Users/richardinsley/miniconda3/envs/py39/lib/libpython3.9.dylib", RTLD_NOW);
+    void* handle = dlopen(libpath, RTLD_NOW);
     if (handle == NULL) {
         fprintf(stderr, "%s\n", dlerror());
         return;
@@ -155,15 +154,15 @@ type PythonLib struct {
 }
 
 func (env *Environment) NewPythonLib() (*PythonLib, error) {
-	return NewPythonLib(env.EnvPath, env.SitePackagesPath, env.PythonVersion.MinorString())
+	return NewPythonLib(env.PythonLibPath, env.EnvPath, env.SitePackagesPath, env.PythonVersion.MinorString())
 }
 
-func NewPythonLib(pyhome string, pypkg string, version string) (*PythonLib, error) {
+func NewPythonLib(libpath string, pyhome string, pypkg string, version string) (*PythonLib, error) {
 	// os.Setenv("PYTHONHOME", "/Users/richardinsley/miniconda3/envs/py39")
 	// os.Setenv("PYTHONPATH", "/Users/richardinsley/miniconda3/envs/py39/lib/python3.9/site-packages")
 
-	os.Setenv("PYTHONHOME", pyhome)
-	os.Setenv("PYTHONPATH", pypkg)
+	// os.Setenv("PYTHONHOME", pyhome)
+	// os.Setenv("PYTHONPATH", pypkg)
 	retv := &PythonLib{
 		FTable: make(map[string]unsafe.Pointer),
 	}
@@ -188,7 +187,9 @@ func NewPythonLib(pyhome string, pypkg string, version string) (*PythonLib, erro
 	}
 
 	cFunctionPointers := make([]unsafe.Pointer, len(retv.FunctionNames))
-	C.loadPythonFunctions(&cFunctionNames[0], &cFunctionPointers[0], C.int(len(retv.FunctionNames)))
+	lp := C.CString(libpath)
+	defer C.free(unsafe.Pointer(lp))
+	C.loadPythonFunctions(lp, &cFunctionNames[0], &cFunctionPointers[0], C.int(len(retv.FunctionNames)))
 
 	// Check for NULL pointers and use the functions...
 	for i, ptr := range cFunctionPointers {

@@ -109,7 +109,7 @@ func CreateEnvironment(envName string, rootDir string, pythonVersion string, cha
 		fmt.Println("Creating Python environment...")
 		var createEnvCmd *exec.Cmd = nil
 		if channel != "" {
-			createEnvCmd = exec.Command(env.MicromambaPath, "create", "-n", env.Name, "python="+pythonVersion, "-c", "conda-forge", "-y")
+			createEnvCmd = exec.Command(env.MicromambaPath, "--root-prefix", env.RootDir, "create", "-n", env.Name, "python="+pythonVersion, "-c", "conda-forge", "-y")
 		} else {
 			createEnvCmd = exec.Command(env.MicromambaPath, "create", "-n", env.Name, "python="+pythonVersion, "-y")
 		}
