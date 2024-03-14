@@ -28,14 +28,6 @@ func main() {
 	}
 	fmt.Printf("Created environment: %s\n", env.Name)
 
-	// test create a library
-	lib, err := env.NewPythonLib()
-	if err != nil {
-		fmt.Printf("Error creating library: %v\n", err)
-		return
-	}
-	fmt.Printf("Created library with : %d functions\n", len(lib.FTable))
-
 	// Clone the given repository to the given directory
 	fmt.Printf("git clone https://github.com/go-git/go-git")
 

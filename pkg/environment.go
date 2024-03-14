@@ -55,7 +55,7 @@ func CreateEnvironment(envName string, rootDir string, pythonVersion string, cha
 	case "amd64":
 		arch = "64"
 	case "arm64":
-		if platform == "win" {
+		if platform == "windows" {
 			// As of now, there is not a separate arm64 download for Windows
 			// We'll use the same download as for amd64
 			arch = "64"
@@ -184,6 +184,8 @@ func ExpectMicromamba(binFolder string) (string, error) {
 	var executableName string = "micromamba"
 	if platform == "darwin" {
 		platform = "osx"
+	} else if platform == "windows" {
+		platform = "win"
 	}
 
 	switch arch {
@@ -192,7 +194,7 @@ func ExpectMicromamba(binFolder string) (string, error) {
 	case "arm64":
 		if platform == "win" {
 			// As of now, there is not a separate arm64 download for Windows
-			return "", fmt.Errorf("windows arm 64 not supported: %s", arch)
+			arch = "64"
 		}
 	default:
 		return "", fmt.Errorf("unsupported architecture: %s", arch)
@@ -221,7 +223,7 @@ func ExpectMicromamba(binFolder string) (string, error) {
 	defer resp.Body.Close()
 
 	// Create the file
-	if platform == "windows" {
+	if platform == "win" {
 		executableName += ".exe"
 	}
 	binpath := filepath.Join(binFolder, executableName)
