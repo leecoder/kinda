@@ -98,3 +98,7 @@ func (v *Version) String() string {
 func (v *Version) MinorString() string {
 	return fmt.Sprintf("%d.%d", v.Major, v.Minor)
 }
+
+func (v *Version) MinorStringCompact() string {
+	return fmt.Sprintf("%d%d", v.Major, v.Minor)
+}

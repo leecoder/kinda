@@ -124,16 +124,23 @@ func CreateEnvironment(envName string, rootDir string, pythonVersion string, cha
 
 	// Construct the full paths to the Python and pip executables within the created environment
 	env.EnvPath = envPath
-	env.EnvBinPath = filepath.Join(env.RootDir, "envs", env.Name, "bin")
-	env.PythonPath = filepath.Join(env.EnvBinPath, "python")
-	env.PipPath = filepath.Join(env.EnvBinPath, "pip")
+	if platform == "windows" {
+		env.EnvBinPath = filepath.Join(env.RootDir, "envs", env.Name)
+		env.PythonPath = filepath.Join(env.EnvBinPath, "python.exe")
+		env.PipPath = filepath.Join(env.RootDir, "envs", env.Name, "Scripts", "pip.exe")
+	} else {
+		env.EnvBinPath = filepath.Join(env.RootDir, "envs", env.Name, "bin")
+		env.PythonPath = filepath.Join(env.EnvBinPath, "python")
+		env.PipPath = filepath.Join(env.EnvBinPath, "pip")
+	}
+
 	env.SitePackagesPath = filepath.Join(env.RootDir, "envs", env.Name, "lib", "python"+requestedVersion.MinorString(), "site-packages")
 
 	// find the python lib path
 	env.EnvLibPath = filepath.Join(env.RootDir, "envs", env.Name, "lib")
 	env.PythonLibPath = env.EnvLibPath
 	if platform == "windows" {
-		env.PythonLibPath = filepath.Join(env.RootDir, "envs", env.Name, "python"+requestedVersion.MinorString()+".dll")
+		env.PythonLibPath = filepath.Join(env.RootDir, "envs", env.Name, "python"+requestedVersion.MinorStringCompact()+".dll")
 	} else if platform == "darwin" {
 		env.PythonLibPath = filepath.Join(env.RootDir, "envs", env.Name, "lib", "libpython"+requestedVersion.MinorString()+".dylib")
 	} else {
@@ -144,6 +151,8 @@ func CreateEnvironment(envName string, rootDir string, pythonVersion string, cha
 	env.PythonHeadersPath = filepath.Join(env.RootDir, "envs", env.Name, "include", "python"+requestedVersion.MinorString())
 
 	// Check if the Python executable exists and get its version
+	// C:\Users\johnn\kinda\micromamba\envs\myenv3.10\bin\python.exe
+	// C:\Users\johnn\kinda\micromamba\envs\myenv3.10\python.exe
 	pver, err := RunReadStdout(env.PythonPath, "--version")
 	if err != nil {
 		return nil, fmt.Errorf("error running python --version: %v", err)

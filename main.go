@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/go-git/go-git/v5"
 	kinda "github.com/richinsley/kinda/pkg"
@@ -20,7 +21,7 @@ func main() {
 	// Specify the binary folder to place micromamba in
 	rootDirectory := filepath.Join(cwd, "micromamba")
 	fmt.Println("Creating Kinda repo at: ", rootDirectory)
-	version := "3.12"
+	version := "3.10"
 	env, err := kinda.CreateEnvironment("myenv"+version, rootDirectory, version, "conda-forge")
 	if err != nil {
 		fmt.Printf("Error creating environment: %v\n", err)
@@ -43,6 +44,19 @@ func main() {
 	}
 
 	if repo != nil {
+		if runtime.GOOS == "windows" {
+			// pre-install some required packages for cuda
+			packages := []string{
+				"torch",
+				"torchvision",
+				"torchaudio",
+			}
+			err = env.PipInstallPackages(packages, "", "https://download.pytorch.org/whl/cu121")
+			if err != nil {
+				fmt.Printf("Error installing requirements: %v\n", err)
+				return
+			}
+		}
 		// install the pip requirements
 		requirementsPath := filepath.Join(comfyFolder, "requirements.txt")
 		err = env.PipInstallRequirmements(requirementsPath)

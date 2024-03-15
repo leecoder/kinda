@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"bufio"
+	"fmt"
 	"os/exec"
 )
 
@@ -64,11 +65,11 @@ func (env *Environment) RunPythonScriptFromFile(scriptPath string, args ...strin
 	args = append([]string{scriptPath}, args...)
 	cmd := exec.Command(env.PythonPath, args...)
 
-	// // Create a pipe for the output of the script
-	// stdoutPipe, err := cmd.StdoutPipe()
-	// if err != nil {
-	// 	return fmt.Errorf("error creating stdout pipe: %v", err)
-	// }
+	// Create a pipe for the output of the script
+	stdoutPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("error creating stdout pipe: %v", err)
+	}
 
 	// // Create a pipe for the input of the script
 	// stdinPipe, err := cmd.StdinPipe()
@@ -88,11 +89,11 @@ func (env *Environment) RunPythonScriptFromFile(scriptPath string, args ...strin
 	// 	io.WriteString(stdinPipe, "world\n")
 	// }()
 
-	// // Read from the command's stdout
-	// scanner := bufio.NewScanner(stdoutPipe)
-	// for scanner.Scan() {
-	// 	fmt.Println("Python script output:", scanner.Text())
-	// }
+	// Read from the command's stdout
+	scanner := bufio.NewScanner(stdoutPipe)
+	for scanner.Scan() {
+		fmt.Println("Python script output:", scanner.Text())
+	}
 
 	// Wait for the command to finish
 	if err := cmd.Wait(); err != nil {
