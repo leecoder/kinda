@@ -21,6 +21,7 @@
 go.work
 
 .vscode/
+.DS_Store
 micromamba/
 comfyui/
 genctags/micromamba
