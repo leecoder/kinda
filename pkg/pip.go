@@ -29,7 +29,7 @@ func (env *Environment) PipInstallPackages(packages []string, index_url string, 
 }
 
 func (env *Environment) PipInstallRequirmements(requirementsPath string) error {
-	installCmd := exec.Command(env.PipPath, "install", "-r", "--no-warn-script-location", requirementsPath)
+	installCmd := exec.Command(env.PipPath, "install", "--no-warn-script-location", "-r", requirementsPath)
 	installCmd.Stdout = os.Stdout
 	installCmd.Stderr = os.Stderr
 	if err := installCmd.Run(); err != nil {

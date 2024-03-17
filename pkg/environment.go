@@ -29,6 +29,10 @@ type Environment struct {
 }
 
 func CreateEnvironment(envName string, rootDir string, pythonVersion string, channel string) (*Environment, error) {
+	if pythonVersion == "" {
+		pythonVersion = "3.10"
+	}
+
 	requestedVersion, err := ParseVersion(pythonVersion)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing requested python version: %v", err)
