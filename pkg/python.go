@@ -65,6 +65,9 @@ func (env *Environment) RunPythonScriptFromFile(scriptPath string, args ...strin
 	args = append([]string{scriptPath}, args...)
 	cmd := exec.Command(env.PythonPath, args...)
 
+	// Set the SysProcAttr based on the platform
+	setSysProcAttr(cmd)
+
 	// Create a pipe for the output of the script
 	stdoutPipe, err := cmd.StderrPipe()
 	if err != nil {
@@ -82,12 +85,14 @@ func (env *Environment) RunPythonScriptFromFile(scriptPath string, args ...strin
 		return err
 	}
 
-	// // Write to the command's stdin
+	// // How to Write to the command's stdin
 	// go func() {
 	// 	defer stdinPipe.Close()
-	// 	io.WriteString(stdinPipe, "hello\n")
-	// 	io.WriteString(stdinPipe, "world\n")
+	// 	io.WriteString(stdinPipe, "some input\n")
 	// }()
+
+	// Ensure the child process is terminated when the parent process exits or crashes
+	defer terminateChildProcess(cmd)
 
 	// Read from the command's stdout
 	scanner := bufio.NewScanner(stdoutPipe)
