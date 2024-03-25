@@ -60,6 +60,9 @@ func (env *Environment) RunPythonReadStdout(scriptPath string, args ...string) (
 	return retv, nil
 }
 
+// https://docs.python.org/3/c-api/veryhigh.html#c.PyRun_SimpleFile
+// https://justen.codes/breaking-all-the-rules-using-go-to-call-windows-api-2cbfd8c79724
+
 func (env *Environment) RunPythonScriptFromFile(scriptPath string, args ...string) error {
 	// put scriptPath at the front of the args
 	args = append([]string{scriptPath}, args...)
