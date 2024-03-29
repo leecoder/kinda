@@ -30,7 +30,7 @@ Installing Packages
 To install packages into the Python environment using pip, use the PipInstallPackages or PipInstallRequirements methods:
 
 ```bash
-err := env.PipInstallPackages([]string{"numpy", "pandas"}, "", "")
+err := env.PipInstallPackages([]string{"numpy", "pandas"}, "", "", false)
 if err != nil {
     // Handle error
 }

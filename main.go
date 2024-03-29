@@ -51,7 +51,7 @@ func main() {
 				"torchvision",
 				"torchaudio",
 			}
-			err = env.PipInstallPackages(packages, "", "https://download.pytorch.org/whl/cu121")
+			err = env.PipInstallPackages(packages, "", "https://download.pytorch.org/whl/cu121", false)
 			if err != nil {
 				fmt.Printf("Error installing requirements: %v\n", err)
 				return
