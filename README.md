@@ -18,7 +18,7 @@ go get github.com/richinsley/kinda
 Creating an Environment
 To create a new Python environment, use the CreateEnvironment function:
 ```go
-env, err := kinda.CreateEnvironment("myenv", "/path/to/root", "3.10", "conda-forge")
+env, err := kinda.CreateEnvironment("myenv", "/path/to/root", "3.10", "conda-forge", kinda.ShowVerbose)
 if err != nil {
     // Handle error
 }

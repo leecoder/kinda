@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"io/fs"
@@ -9,6 +10,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"github.com/schollz/progressbar/v3"
 )
 
 type Environment struct {
@@ -28,7 +31,21 @@ type Environment struct {
 	SitePackagesPath  string  // Path to the site-packages directory within the environment
 }
 
-func CreateEnvironment(envName string, rootDir string, pythonVersion string, channel string) (*Environment, error) {
+// user feedback options for CreateEnvironment
+type CreateEnvironmentOptions int
+
+const (
+	// Show progress bar
+	ShowProgressBar CreateEnvironmentOptions = iota
+	// Show progress bar and verbose output
+	ShowProgressBarVerbose
+	// Show verbose output
+	ShowVerbose
+	// Show nothing
+	ShowNothing
+)
+
+func CreateEnvironment(envName string, rootDir string, pythonVersion string, channel string, feedback CreateEnvironmentOptions) (*Environment, error) {
 	if pythonVersion == "" {
 		pythonVersion = "3.10"
 	}
@@ -86,9 +103,8 @@ func CreateEnvironment(envName string, rootDir string, pythonVersion string, cha
 	if err != nil {
 		_, ok := err.(*fs.PathError)
 		if ok {
-			// download micromamba
-			fmt.Println("Downloading micromamba")
-			env.MicromambaPath, err = ExpectMicromamba(binDirectory)
+			// download micromamba if it doesn't exist
+			env.MicromambaPath, err = ExpectMicromamba(binDirectory, feedback)
 			if err != nil {
 				return nil, fmt.Errorf("error downloading micromamba: %v", err)
 			}
@@ -110,19 +126,60 @@ func CreateEnvironment(envName string, rootDir string, pythonVersion string, cha
 	envPath := filepath.Join(env.RootDir, "envs", env.Name)
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		// Create a new Python environment with micromamba
-		fmt.Println("Creating Python environment...")
 		var createEnvCmd *exec.Cmd = nil
+		cmdargs := []string{"--root-prefix", env.RootDir, "create", "-n", env.Name, "python=" + pythonVersion, "-y"}
 		if channel != "" {
-			createEnvCmd = exec.Command(env.MicromambaPath, "--root-prefix", env.RootDir, "create", "-n", env.Name, "python="+pythonVersion, "-c", "conda-forge", "-y")
-		} else {
-			createEnvCmd = exec.Command(env.MicromambaPath, "create", "-n", env.Name, "python="+pythonVersion, "-y")
+			cmdargs = append(cmdargs, "-c", channel)
 		}
 
-		createEnvCmd.Stdout = os.Stdout
-		createEnvCmd.Stderr = os.Stderr
+		createEnvCmd = exec.Command(env.MicromambaPath, cmdargs...)
+
+		// createEnvCmd.Stdout = os.Stdout
+		// createEnvCmd.Stderr = os.Stderr
 		createEnvCmd.Env = append(os.Environ(), "MAMBA_ROOT_PREFIX="+env.RootDir)
-		if err := createEnvCmd.Run(); err != nil {
+
+		stdout, err := createEnvCmd.StdoutPipe()
+		if err != nil {
 			return nil, err
+		}
+		defer stdout.Close()
+
+		var bar *progressbar.ProgressBar = nil
+
+		if feedback == ShowProgressBar || feedback == ShowProgressBarVerbose {
+			bar = progressbar.NewOptions(-1,
+				progressbar.OptionEnableColorCodes(true),
+				progressbar.OptionShowBytes(false),
+				progressbar.OptionSetWidth(15),
+				progressbar.OptionSetDescription("Creating Python environment..."),
+				progressbar.OptionSetTheme(progressbar.Theme{
+					Saucer:        "[green]=[reset]",
+					SaucerHead:    "[green]>[reset]",
+					SaucerPadding: " ",
+					BarStart:      "[",
+					BarEnd:        "]",
+				}))
+		}
+
+		// continue to read the output until there is no more
+		// or an error occurs
+		if err := createEnvCmd.Start(); err != nil {
+			return nil, err
+		}
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			if bar != nil {
+				// we'll use lines to update the progress bar to show we are working
+				bar.Add(1)
+			}
+			if feedback == ShowVerbose || feedback == ShowProgressBarVerbose {
+				fmt.Println(scanner.Text())
+			}
+		}
+
+		if bar != nil {
+			bar.Finish()
+			fmt.Println()
 		}
 	}
 
@@ -188,7 +245,7 @@ func CreateEnvironment(envName string, rootDir string, pythonVersion string, cha
 	return env, nil
 }
 
-func ExpectMicromamba(binFolder string) (string, error) {
+func ExpectMicromamba(binFolder string, feedback CreateEnvironmentOptions) (string, error) {
 	// Detect platform and architecture
 	platform := runtime.GOOS
 	arch := runtime.GOARCH
@@ -228,34 +285,60 @@ func ExpectMicromamba(binFolder string) (string, error) {
 		return "", fmt.Errorf("error creating directory: %v", err)
 	}
 
-	// Download the binary
-	resp, err := http.Get(downloadURL)
-	if err != nil {
-		return "", fmt.Errorf("error downloading file: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// Create the file
+	// Target binary path
 	if platform == "win" {
 		executableName += ".exe"
 	}
 	binpath := filepath.Join(binFolder, executableName)
-	outFile, err := os.Create(binpath)
-	if err != nil {
-		return "", fmt.Errorf("error creating file: %v", err)
-	}
-	defer outFile.Close()
 
-	// Write the body to file
-	_, err = io.Copy(outFile, resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("error writing file: %v", err)
+	if feedback == ShowVerbose || feedback == ShowProgressBarVerbose {
+		fmt.Printf("Downloading %s to %s\n", downloadURL, binpath)
 	}
 
-	// Change file permissions to make it executable (not applicable for Windows)
-	if platform != "windows" {
-		if err := os.Chmod(binpath, 0755); err != nil {
-			return "", fmt.Errorf("error setting file permissions: %v", err)
+	if feedback == ShowProgressBar || feedback == ShowProgressBarVerbose {
+		req, err := http.NewRequest("GET", downloadURL, nil)
+		if err != nil {
+			return "", fmt.Errorf("error creating request: %v", err)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return "", fmt.Errorf("error downloading file: %v", err)
+		}
+		defer resp.Body.Close()
+
+		f, _ := os.OpenFile(binpath, os.O_CREATE|os.O_WRONLY, 0755)
+		defer f.Close()
+
+		bar := progressbar.DefaultBytes(
+			resp.ContentLength,
+			"Downloading micromamba",
+		)
+		io.Copy(io.MultiWriter(f, bar), resp.Body)
+	} else {
+		// Download the binary
+		resp, err := http.Get(downloadURL)
+		if err != nil {
+			return "", fmt.Errorf("error downloading file: %v", err)
+		}
+		defer resp.Body.Close()
+
+		outFile, err := os.Create(binpath)
+		if err != nil {
+			return "", fmt.Errorf("error creating file: %v", err)
+		}
+		defer outFile.Close()
+
+		// Write the body to file
+		_, err = io.Copy(outFile, resp.Body)
+		if err != nil {
+			return "", fmt.Errorf("error writing file: %v", err)
+		}
+
+		// Change file permissions to make it executable (not applicable for Windows)
+		if platform != "windows" {
+			if err := os.Chmod(binpath, 0755); err != nil {
+				return "", fmt.Errorf("error setting file permissions: %v", err)
+			}
 		}
 	}
 

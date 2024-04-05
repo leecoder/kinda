@@ -18,31 +18,27 @@ func NewGitRepo(url string, directory string, branch string) (*git.Repository, s
 	directory = path.Join(directory, comp)
 
 	// Clone the given repository to the given directory
-	fmt.Printf("git clone %s %s", url, directory)
 	r, err := git.PlainClone(directory, false, &git.CloneOptions{
 		URL: url,
 	})
 	if err != nil && err.Error() != "repository already exists" {
-		return nil, "", fmt.Errorf("Error cloning: %v", err)
+		return nil, "", fmt.Errorf("error cloning: %v", err)
 	}
 
 	// ... retrieving the commit being pointed by HEAD
-	fmt.Println("git show-ref --head HEAD")
 	ref, err := r.Head()
 	if err != nil {
-		return nil, "", fmt.Errorf("Error getting HEAD: %v", err)
+		return nil, "", fmt.Errorf("error getting HEAD: %v", err)
 	}
 
 	fmt.Println(ref.Hash())
 
 	w, err := r.Worktree()
 	if err != nil {
-		return nil, "", fmt.Errorf("Error getting worktree: %v", err)
+		return nil, "", fmt.Errorf("error getting worktree: %v", err)
 	}
 
 	// ... checking out branch
-	fmt.Printf("git checkout %s", branch)
-
 	branchRefName := plumbing.NewBranchReferenceName(branch)
 	branchCoOpts := git.CheckoutOptions{
 		Branch: plumbing.ReferenceName(branchRefName),
@@ -55,25 +51,19 @@ func NewGitRepo(url string, directory string, branch string) (*git.Repository, s
 		mirrorRemoteBranchRefSpec := fmt.Sprintf("refs/heads/%s:refs/heads/%s", branch, branch)
 		err = fetchOrigin(r, mirrorRemoteBranchRefSpec)
 		if err != nil {
-			return nil, "", fmt.Errorf("Error fetching origin: %v", err)
+			return nil, "", fmt.Errorf("error fetching origin: %v", err)
 		}
 
 		err = w.Checkout(&branchCoOpts)
 		if err != nil {
-			return nil, "", fmt.Errorf("Error checking out branch: %v", err)
+			return nil, "", fmt.Errorf("error checking out branch: %v", err)
 		}
 	}
-	if err != nil {
-		return nil, "", fmt.Errorf("Error checking out branch: %v", err)
-	}
-
-	fmt.Printf("checked out branch: %s", branch)
 
 	// ... retrieving the commit being pointed by HEAD (branch now)
-	fmt.Printf("git show-ref --head HEAD")
 	ref, err = r.Head()
 	if err != nil {
-		return nil, "", fmt.Errorf("Error getting HEAD: %v", err)
+		return nil, "", fmt.Errorf("error getting HEAD: %v", err)
 	}
 	fmt.Println(ref.Hash())
 	return r, directory, nil
@@ -82,7 +72,7 @@ func NewGitRepo(url string, directory string, branch string) (*git.Repository, s
 func fetchOrigin(repo *git.Repository, refSpecStr string) error {
 	remote, err := repo.Remote("origin")
 	if err != nil {
-		return fmt.Errorf("Error getting remote: %v", err)
+		return fmt.Errorf("error getting remote: %v", err)
 	}
 
 	var refSpecs []config.RefSpec
