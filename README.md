@@ -3,7 +3,7 @@ Kinda is a Go package that provides functionality to create and manage Python en
 
 ## Features
 Create isolated Python environments with specified Python versions
-Automatically download and install micromamba, a lightweight conda alternative
+Automatically download and install [micromamba](https://github.com/mamba-org/mamba), a lightweight conda alternative
 Install packages into the Python environment using pip or micromamba
 Run Python scripts within the created environment
 Clone Git repositories and install project dependencies
