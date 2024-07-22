@@ -30,7 +30,6 @@ def load_package(package):
         setattr(package_module, module['Name'], loaded_module)
 
 # Read program data from the second pipe
-# fd_program = {{.PipeNumber}}
 fd_program = sys.stderr.fileno() + 2
 f_program = os.fdopen(fd_program, 'r')
 program_data_json = f_program.read()

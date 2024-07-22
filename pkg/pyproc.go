@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -14,22 +15,6 @@ import (
 	"text/template"
 	"time"
 )
-
-// Bootstrap script to read from the pipe and execute
-// The file descriptor is passed as an extra file, so it will be after stderr
-//
-//go:embed scripts/bootstrap.py
-var primaryBootstrapScriptTemplate string
-
-// Debug Bootstrap script to read from the pipe and execute.
-// This script will start the debugpy server on port 5678
-// The file descriptor is passed as an extra file, so it will be after stderr
-//
-//go:embed scripts/debugbootstrap.py
-var debugBootstrapScript string
-
-//go:embed scripts/secondaryBootstrapScript.py
-var secondaryBootstrapScriptTemplate string
 
 // PythonProcess represents a running Python process with its I/O pipes
 type PythonProcess struct {
@@ -136,11 +121,25 @@ func (env *Environment) NewPythonProcessFromProgram(program *PythonProgram, envi
 	primaryBootstrapScript := procTemplate(primaryBootstrapScriptTemplate, TemplateData{PipeNumber: int(reader_bootstrap_fd)})
 
 	// Create the command with the primary bootstrap script
-	fullArgs := append([]string{"-u", "-c", primaryBootstrapScript}, args...)
-	cmd := exec.Command(env.PythonPath, fullArgs...)
+	// fullArgs := append([]string{"-u", "-c", primaryBootstrapScript}, args...)
+	// cmd := exec.Command(env.PythonPath, fullArgs...)
+	cmd := exec.Command(env.PythonPath)
 
 	// Pass both file descriptors using ExtraFiles
-	cmd.ExtraFiles = append([]*os.File{reader_bootstrap, reader_program}, extrafiles...)
+	// this will return a list of strings with the file descriptors
+	extradescriptors := setExtraFiles(cmd, append([]*os.File{reader_bootstrap, reader_program}, extrafiles...))
+
+	// At this point, cmd.Args will contain just the python path.  We can now append the "-c" flag and the primary bootstrap script
+	cmd.Args = append(cmd.Args, "-u", "-c", primaryBootstrapScript)
+
+	// append the count of extra files to the command arguments as a string
+	cmd.Args = append(cmd.Args, fmt.Sprintf("%d", len(extradescriptors)))
+
+	// append the extra file descriptors to the command arguments
+	cmd.Args = append(cmd.Args, extradescriptors...)
+
+	// append the program arguments to the command arguments
+	cmd.Args = append(cmd.Args, args...)
 
 	// Set environment variables
 	cmd.Env = os.Environ()
@@ -219,7 +218,8 @@ func (env *Environment) NewPythonProcessFromString(script string, environment_va
 
 	// Pass the file descriptor using ExtraFiles
 	// prepend our reader to the list of extra files and assign
-	cmd.ExtraFiles = append([]*os.File{reader}, extrafiles...)
+	extrafiles = append([]*os.File{reader}, extrafiles...)
+	setExtraFiles(cmd, extrafiles)
 
 	// set it's environment variables as our environment variables
 	cmd.Env = os.Environ()
