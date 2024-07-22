@@ -30,10 +30,24 @@ def load_package(package):
         setattr(package_module, module['Name'], loaded_module)
 
 # Read program data from the second pipe
-fd_program = sys.stderr.fileno() + 2
+fd_program = int(sys.argv[3])
 f_program = os.fdopen(fd_program, 'r')
 program_data_json = f_program.read()
 f_program.close()
+
+# at this point sys.argv is ['-c','(int)extra_file_count', '(int)fd_bootstrap', '(int)fd_program', '(int)extrafile_1', 'extrafile_n', 'args'...]
+
+# get the extra file count
+extra_file_count = int(sys.argv[1])
+
+# get the extra file descriptors
+extra_file_descriptors = [int(sys.argv[2 + i]) for i in range(extra_file_count)]
+
+# truncate sys.argv to just the arguments and prepend the executable name
+sys.argv = ["pyingo.py"] + sys.argv[2 + extra_file_count:]
+
+# add the extra file descriptors to the sys module
+sys.__dict__['extra_file_descriptors'] = extra_file_descriptors
 
 # Parse the JSON data
 program_data = json.loads(program_data_json)
