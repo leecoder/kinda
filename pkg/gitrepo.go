@@ -20,6 +20,7 @@ func NewGitRepo(url string, directory string, branch string) (*git.Repository, s
 	// Clone the given repository to the given directory
 	r, err := git.PlainClone(directory, false, &git.CloneOptions{
 		URL: url,
+		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 	})
 	if err != nil && err.Error() != "repository already exists" {
 		return nil, "", fmt.Errorf("error cloning: %v", err)
